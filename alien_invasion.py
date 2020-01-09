@@ -3,6 +3,7 @@ import pygame
 from settings import Settings
 from ship import Ship
 from bullet import Bullet
+from alien import Alien
 
 class AlienInvasion:
     """Overall class to manage game assets and behavior."""
@@ -22,14 +23,19 @@ class AlienInvasion:
         self.ship = Ship(self)
 
         self.bullets = pygame.sprite.Group()
+        self.aliens = pygame.sprite.Group()
+
+        self._create_fleet()
 
     def run_game(self):
         """Start the main loop for the game."""
         while True:
             self._check_event()
             self.ship.update()
-            self.bullets.update()
+            self._update_aliens()
+            self._update_bullets()
             self._update_screen()
+            print(len(self.bullets))
 
 
     def _check_event(self):
@@ -60,8 +66,9 @@ class AlienInvasion:
 
     def _fire_bullet(self):
         """Create a new bullet and add it to the bullets group."""
-        new_bullet = Bullet(self)
-        self.bullets.add(new_bullet)
+        if len(self.bullets) < self.settings.bullets_allowed:
+            new_bullet = Bullet(self)
+            self.bullets.add(new_bullet)
 
     def _update_screen(self):
         """A helper method work inside the class but not meant to be called by instance"""
@@ -69,11 +76,48 @@ class AlienInvasion:
         self.ship.blitme()
         for bullet in self.bullets.sprites():
             bullet.draw_bullet()
+        self.aliens.draw(self.screen)
         pygame.display.flip()
+        
+
+    def _update_bullets(self):
+        """Update the bullets position and remove old bullets"""
+        # Update the bullets position
+        self.bullets.update()           
+        # Get rid of bullets that have disappeared
+        for bullet in self.bullets.copy():
+            if bullet.rect.bottom <= 0:
+                self.bullets.remove(bullet)
+
+    def _create_fleet(self):
+        """Create the fleet of aliens"""
+        #Create an alien and find the numberof aliens in a row
+        #Spacing between each alien is equal to one alien width
+        alien = Alien(self)
+        alien_width = alien.rect.width
+        alien_height = alien.rect.height
+        available_space_x = self.settings.screen_width - 2*alien_width
+        number_aliens_x = available_space_x//alien_width
+        available_space_y = self.settings.screen_height -3*alien_height - self.ship.rect.height
+        number_rows = available_space_y//(2*alien_height)
 
 
+        #Create the first row of aliens
+        for row_number in range(number_rows):
+            for alien_number in range(number_aliens_x):
+                self._create_alien(alien_number,row_number)
 
-
+    def _create_alien(self, alien_number, row_number):
+            alien = Alien(self)
+            alien_width = alien.rect.width
+            alien_height = alien.rect.height
+            alien.x = alien_width + 2*alien_width*alien_number
+            alien.rect.x = alien.x
+            alien.rect.y = alien.rect.height + 2*row_number*alien_height           
+            self.aliens.add(alien)
+            
+    def _update_aliens(self):
+        self.aliens.update()
 
 if __name__ == '__main__':
     #Make a game instance and run the game.
